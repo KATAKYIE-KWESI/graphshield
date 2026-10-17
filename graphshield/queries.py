@@ -206,6 +206,11 @@ CREATE (i)-[:FLAGGED]->(m)
 RETURN count(*) AS flags_linked
 """
 
+VERDICT_MIX = """
+MATCH (d:Decision)
+RETURN d.verdict AS verdict, count(d) AS decisions
+"""
+
 INVESTIGATION_LOG = """
 MATCH (i:Investigation)-[:INVESTIGATED]->(d:Decision)-[:EVALUATED]->(v:Version)
 OPTIONAL MATCH (i)-[:FLAGGED]->(m:Maintainer)

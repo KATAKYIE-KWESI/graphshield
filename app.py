@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 from html import escape
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
@@ -152,7 +153,7 @@ code, pre, .stCode, [data-testid="stMarkdownContainer"] code {
 
 /* Scenario Cards & Buttons */
 .gs-scenario {
-    min-height: 135px;
+    min-height: 155px;
     margin-bottom: 0.8rem;
     background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -479,10 +480,13 @@ st.set_page_config(page_title="GraphShield", page_icon="🛡️", layout="wide")
 html(CSS)
 
 # On Streamlit Community Cloud, settings come from the app's Secrets instead of .env.
+# Accepts top-level keys and keys inside one [section].
 try:
     for key, value in st.secrets.items():
-        if isinstance(value, (str, int, float)):
-            os.environ.setdefault(key, str(value))
+        items = value.items() if hasattr(value, "items") else [(key, value)]
+        for k, val in items:
+            if isinstance(val, (str, int, float)):
+                os.environ.setdefault(k.upper(), str(val))
 except Exception:
     pass  # no secrets file locally: .env is used
 
@@ -687,12 +691,36 @@ t_dec, t_inv = st.tabs(["🧠 Decisions", "📁 Investigations"])
 with t_dec:
     log = g.ro_query(Q.DECISION_LOG).result_set
     if log:
-        df = pd.DataFrame(log, columns=["at", "verdict", "risk", "impact", "package", "version", "maintainer"])
-        df["at"] = df["at"].map(lambda ms: datetime.fromtimestamp(ms / 1000).strftime("%H:%M:%S"))
-        st.dataframe(df.style.map(colour_cells(VERDICT_COLOUR), subset=["verdict"]),
-                     use_container_width=True, hide_index=True,
-                     column_config={"risk": st.column_config.ProgressColumn("risk", min_value=0, max_value=100,
-                                                                             format="%d")})
+        pie_col, table_col = st.columns([1, 2])
+        with pie_col:
+            mix = pd.DataFrame(g.ro_query(Q.VERDICT_MIX).result_set, columns=["verdict", "decisions"])
+            mix["share"] = mix["decisions"] / mix["decisions"].sum()
+            order = [k for k in VERDICT_COLOUR if k in set(mix["verdict"])]
+            donut = alt.Chart(mix).mark_arc(innerRadius=62, outerRadius=105, cornerRadius=4,
+                                            stroke="#0b1020", strokeWidth=2).encode(
+                theta=alt.Theta("decisions:Q", stack=True),
+                order=alt.Order("verdict:N", sort="ascending"),
+                color=alt.Color("verdict:N", title=None,
+                                scale=alt.Scale(domain=order, range=[VERDICT_COLOUR[k] for k in order]),
+                                legend=alt.Legend(orient="bottom", labelColor="#cbd5e1", symbolType="circle")),
+                tooltip=[alt.Tooltip("verdict:N", title="Verdict"),
+                         alt.Tooltip("decisions:Q", title="Decisions"),
+                         alt.Tooltip("share:Q", title="Share", format=".0%")],
+            )
+            total = alt.Chart(pd.DataFrame({"t": [f"{int(mix['decisions'].sum())}"]})).mark_text(
+                fontSize=28, fontWeight="bold", color="#f8fafc", dy=-6).encode(text="t:N")
+            caption = alt.Chart(pd.DataFrame({"t": ["decisions"]})).mark_text(
+                fontSize=12, color="#94a3b8", dy=16).encode(text="t:N")
+            st.markdown("**Verdict mix**")
+            st.altair_chart((donut + total + caption).properties(height=280).configure_view(strokeWidth=0)
+                            .configure(background="transparent"), use_container_width=True)
+        with table_col:
+            df = pd.DataFrame(log, columns=["at", "verdict", "risk", "impact", "package", "version", "maintainer"])
+            df["at"] = df["at"].map(lambda ms: datetime.fromtimestamp(ms / 1000).strftime("%H:%M:%S"))
+            st.dataframe(df.style.map(colour_cells(VERDICT_COLOUR), subset=["verdict"]),
+                         use_container_width=True, hide_index=True,
+                         column_config={"risk": st.column_config.ProgressColumn("risk", min_value=0, max_value=100,
+                                                                                 format="%d")})
     else:
         st.caption("No decisions yet. Run a scenario above.")
 with t_inv:
