@@ -17,58 +17,431 @@ from graphshield.seed import TARGET, seed
 from graphshield.simulate import (SECOND_TARGET, simulate_attack, simulate_legit_release,
                                   simulate_repeat_attack, simulate_takeover)
 
-VERDICT_COLOUR = {"BLOCK": "#f43f5e", "QUARANTINE": "#f59e0b", "ALLOW": "#22c55e"}
+VERDICT_COLOUR = {"BLOCK": "#f43f5e", "QUARANTINE": "#f59e0b", "ALLOW": "#10b981"}
 SEVERITY_COLOUR = {"critical": "#f43f5e", "high": "#fb923c", "medium": "#f59e0b", "low": "#38bdf8"}
 
 CSS = """
 <style>
-.block-container {padding-top: 3.5rem; max-width: 1400px;}
-/* Keep the page sharp while Streamlit reruns; spinners show progress instead. */
-[data-stale="true"], .stale-element {opacity: 1 !important; filter: none !important; transition: none !important;}
-h1, h2, h3 {letter-spacing: -0.01em;}
-.gs-hero {display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;
-          padding:1.2rem 1.4rem; border-radius:16px; margin-bottom:1.2rem;
-          background:linear-gradient(135deg,#131a2e 0%,#0f2a3d 100%); border:1px solid #1f2a44;}
-.gs-hero h1 {margin:0; font-size:1.9rem;}
-.gs-hero p {margin:.2rem 0 0; color:#94a3b8;}
-.gs-chips {display:flex; gap:.5rem; flex-wrap:wrap;}
-.gs-chip {display:inline-flex; align-items:center; gap:.4rem; padding:.25rem .7rem; border-radius:999px;
-          font-size:.8rem; background:#0b1020; border:1px solid #1f2a44; color:#cbd5e1;}
-.gs-dot {width:8px; height:8px; border-radius:50%; display:inline-block;}
-.gs-section {font-size:.75rem; text-transform:uppercase; letter-spacing:.12em; color:#64748b;
-             margin:1.4rem 0 .6rem; font-weight:600;}
-.gs-card {background:#131a2e; border:1px solid #1f2a44; border-radius:14px; padding:1rem 1.1rem; height:100%;}
-.gs-scenario {min-height:118px; margin-bottom:.5rem;}
-.gs-scenario b {font-size:1rem;}
-.gs-scenario p {color:#94a3b8; font-size:.85rem; margin:.35rem 0 0;}
-.gs-verdict {display:flex; gap:1.4rem; align-items:center; flex-wrap:wrap; border-left:6px solid var(--c);}
-.gs-pill {font-size:1.6rem; font-weight:800; color:var(--c); letter-spacing:.04em;}
-.gs-meta {color:#cbd5e1; font-size:.95rem;}
-.gs-meta code {background:#0b1020; padding:.1rem .35rem; border-radius:6px; color:#e5e9f2;}
-.gs-meter {flex:1; min-width:220px;}
-.gs-meter-track {height:10px; background:#0b1020; border-radius:999px; overflow:hidden; border:1px solid #1f2a44;}
-.gs-meter-fill {height:100%; background:var(--c); border-radius:999px;}
-.gs-meter-label {display:flex; justify-content:space-between; font-size:.8rem; color:#94a3b8; margin-bottom:.3rem;}
-.gs-kpi .v {font-size:1.7rem; font-weight:700; color:#f8fafc;}
-.gs-kpi .l {font-size:.78rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.08em;}
-.gs-reason {display:flex; gap:.6rem; padding:.55rem .2rem; border-bottom:1px solid #1f2a44; color:#e2e8f0;}
-.gs-reason:last-child {border-bottom:none;}
-.gs-steps {display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.8rem;}
-.gs-step {font-size:.78rem; padding:.3rem .6rem; border-radius:8px; background:#0b1020;
-          border:1px solid #1f2a44; color:#cbd5e1;}
-.gs-step b {color:#38bdf8;}
-.gs-tag {display:inline-block; margin:.15rem .25rem .15rem 0; padding:.15rem .55rem; border-radius:6px;
-         font-size:.8rem; background:#0b1020; border:1px solid #1f2a44; color:#e2e8f0;}
-.gs-tag.red {border-color:#f43f5e; color:#fda4af;}
-.gs-chain {font-family:ui-monospace,monospace; font-size:.82rem; padding:.45rem .6rem; margin-bottom:.35rem;
-           background:#0b1020; border-radius:8px; border:1px solid #1f2a44; color:#cbd5e1; overflow-x:auto;}
-.gs-chain .t {color:#f43f5e; font-weight:700;}
-.gs-report h3 {margin:.2rem 0 .4rem;}
-.gs-report ul {margin:.2rem 0 0 1.1rem; padding:0;}
-.gs-report li {margin-bottom:.35rem; color:#e2e8f0;}
-.gs-sev {font-weight:800; color:var(--c); font-size:.8rem; letter-spacing:.1em;}
-.gs-muted {color:#94a3b8; font-size:.85rem;}
-.gs-sidebar-stat {display:flex; justify-content:space-between; padding:.35rem 0; border-bottom:1px solid #1f2a44;}
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+code, pre, .stCode, [data-testid="stMarkdownContainer"] code {
+    font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Base Layout Tweaks */
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 4rem;
+    max-width: 1400px;
+}
+
+[data-stale="true"], .stale-element {
+    opacity: 1 !important;
+    filter: none !important;
+    transition: none !important;
+}
+
+/* Glassmorphic Top Hero Header */
+.gs-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.2rem;
+    padding: 1.75rem 2rem;
+    border-radius: 20px;
+    margin-bottom: 2rem;
+    background: radial-gradient(120% 120% at 50% 10%, #1e293b 0%, #0f172a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.gs-hero-brand {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.gs-hero-icon {
+    font-size: 2.8rem;
+    background: linear-gradient(135deg, #38bdf8, #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 4px 12px rgba(56, 189, 248, 0.3));
+}
+
+.gs-hero h1 {
+    margin: 0;
+    font-size: 2.2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.gs-hero p {
+    margin: 0.3rem 0 0;
+    color: #94a3b8;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.gs-chips {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.gs-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.gs-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 10px currentColor;
+}
+
+/* Section Dividers */
+.gs-section {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #38bdf8;
+    margin: 2.2rem 0 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.gs-section::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.2) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+/* General Cards & Containers */
+.gs-card {
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    padding: 1.25rem 1.4rem;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+/* Scenario Cards & Buttons */
+.gs-scenario {
+    min-height: 135px;
+    margin-bottom: 0.8rem;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.gs-scenario:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
+.gs-scenario b {
+    font-size: 1.05rem;
+    color: #f8fafc;
+    font-weight: 700;
+}
+
+.gs-scenario p {
+    color: #94a3b8;
+    font-size: 0.88rem;
+    margin: 0.5rem 0 0;
+    line-height: 1.4;
+}
+
+.stButton > button {
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Verdict Display Card */
+.gs-verdict {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    flex-wrap: wrap;
+    border-left: 6px solid var(--c);
+    background: radial-gradient(100% 100% at 0% 0%, rgba(15, 23, 42, 0.95) 0%, #090d16 100%);
+    padding: 1.6rem 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.gs-verdict::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; bottom: 0; width: 200px;
+    background: linear-gradient(90deg, var(--c) 0%, transparent 100%);
+    opacity: 0.08;
+    pointer-events: none;
+}
+
+.gs-pill {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--c);
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 20px rgba(0,0,0,0.5);
+    line-height: 1;
+}
+
+.gs-meta {
+    color: #cbd5e1;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.gs-meta code {
+    background: #1e293b;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    color: #38bdf8;
+    font-weight: 500;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gs-meter {
+    flex: 1;
+    min-width: 240px;
+}
+
+.gs-meter-track {
+    height: 12px;
+    background: #1e293b;
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 2px;
+}
+
+.gs-meter-fill {
+    height: 100%;
+    background: var(--c);
+    border-radius: 999px;
+    box-shadow: 0 0 12px var(--c);
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gs-meter-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-bottom: 0.4rem;
+}
+
+/* KPI Cards */
+.gs-kpi {
+    text-align: center;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 1.1rem 1rem;
+}
+
+.gs-kpi .v {
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: #f8fafc;
+    letter-spacing: -0.02em;
+}
+
+.gs-kpi .l {
+    font-size: 0.75rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    margin-top: 0.3rem;
+}
+
+/* Reason List Item */
+.gs-reason {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.75rem 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+    font-size: 0.95rem;
+}
+
+.gs-reason:last-child {
+    border-bottom: none;
+}
+
+/* Tracing & Steps */
+.gs-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.gs-step {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.gs-step b {
+    color: #38bdf8;
+}
+
+/* Tags & Chains */
+.gs-tag {
+    display: inline-block;
+    margin: 0.2rem 0.3rem 0.2rem 0;
+    padding: 0.25rem 0.7rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+}
+
+.gs-tag.red {
+    background: rgba(244, 63, 94, 0.15);
+    border-color: rgba(244, 63, 94, 0.3);
+    color: #fda4af;
+}
+
+.gs-chain {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 0.5rem;
+    background: #090d16;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: #cbd5e1;
+    overflow-x: auto;
+}
+
+.gs-chain .t {
+    color: #f43f5e;
+    font-weight: 700;
+}
+
+/* Report Styles */
+.gs-report {
+    background: #0f172a;
+}
+
+.gs-report h3 {
+    margin: 0.3rem 0 0.6rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.gs-report ul {
+    margin: 0.4rem 0 0 1.2rem;
+    padding: 0;
+}
+
+.gs-report li {
+    margin-bottom: 0.5rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+    font-size: 0.92rem;
+}
+
+.gs-sev {
+    font-weight: 800;
+    color: var(--c);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+}
+
+.gs-muted {
+    color: #64748b;
+    font-size: 0.88rem;
+}
+
+.gs-sidebar-stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.9rem;
+    color: #cbd5e1;
+}
+
+.gs-sidebar-stat b {
+    color: #38bdf8;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Customizing Streamlit Native Components */
+[data-testid="stSidebar"] {
+    background-color: #0b101d;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-testid="stExpander"] {
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-radius: 12px !important;
+}
+
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+    background-color: transparent;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: 42px;
+    white-space: pre;
+    border-radius: 10px;
+    color: #94a3b8;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background-color: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 0 16px;
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: #1e293b !important;
+    color: #38bdf8 !important;
+    border-color: rgba(56, 189, 248, 0.3) !important;
+}
 </style>
 """
 
@@ -95,7 +468,7 @@ def show_trace(steps):
             st.code(s.cypher, language="cypher")
             if s.params:
                 st.caption("params: " + json.dumps(s.params, default=str))
-            st.dataframe(pd.DataFrame(s.rows), width="stretch")
+            st.dataframe(pd.DataFrame(s.rows), use_container_width=True)
 
 
 def colour_cells(mapping):
@@ -104,6 +477,14 @@ def colour_cells(mapping):
 
 st.set_page_config(page_title="GraphShield", page_icon="🛡️", layout="wide")
 html(CSS)
+
+# On Streamlit Community Cloud, settings come from the app's Secrets instead of .env.
+try:
+    for key, value in st.secrets.items():
+        if isinstance(value, (str, int, float)):
+            os.environ.setdefault(key, str(value))
+except Exception:
+    pass  # no secrets file locally: .env is used
 
 try:
     g = get_graph()
@@ -114,15 +495,23 @@ except Exception as e:
 
 try:
     _, llm_model, _ = llm_settings()
-    llm_chip = f'<span class="gs-chip"><span class="gs-dot" style="background:#22c55e"></span>LLM · {escape(llm_model)}</span>'
+    llm_chip = f'<span class="gs-chip"><span class="gs-dot" style="background:#10b981; color:#10b981"></span>LLM · {escape(llm_model)}</span>'
 except Exception:
-    llm_chip = '<span class="gs-chip"><span class="gs-dot" style="background:#f59e0b"></span>LLM not configured</span>'
-db_chip = ('<span class="gs-chip"><span class="gs-dot" style="background:#22c55e"></span>FalkorDB connected</span>'
+    llm_chip = '<span class="gs-chip"><span class="gs-dot" style="background:#f59e0b; color:#f59e0b"></span>LLM not configured</span>'
+db_chip = ('<span class="gs-chip"><span class="gs-dot" style="background:#10b981; color:#10b981"></span>FalkorDB connected</span>'
            if db_ok else
-           '<span class="gs-chip"><span class="gs-dot" style="background:#f43f5e"></span>FalkorDB offline</span>')
-html(f"""<div class="gs-hero"><div><h1>🛡️ GraphShield</h1>
-<p>Two agents on a FalkorDB graph that stop supply-chain attacks before a poisoned release reaches production.</p></div>
-<div class="gs-chips">{db_chip}{llm_chip}</div></div>""")
+           '<span class="gs-chip"><span class="gs-dot" style="background:#f43f5e; color:#f43f5e"></span>FalkorDB offline</span>')
+
+html(f"""<div class="gs-hero">
+    <div class="gs-hero-brand">
+        <div class="gs-hero-icon">🛡️</div>
+        <div>
+            <h1>GraphShield</h1>
+            <p>Two graph-native agents on FalkorDB stopping supply-chain attacks in real time.</p>
+        </div>
+    </div>
+    <div class="gs-chips">{db_chip}{llm_chip}</div>
+</div>""")
 
 if not db_ok:
     st.error(f"Cannot reach FalkorDB: {db_error}. Start it with `docker compose up -d`.")
@@ -136,7 +525,7 @@ with st.sidebar:
     else:
         st.info("Graph is empty. Seed it first.")
     st.write("")
-    if st.button("♻️ Seed / reset registry", width="stretch"):
+    if st.button("♻️ Seed / reset registry", use_container_width=True):
         with st.spinner("Seeding..."):
             seed()
         st.session_state.pop("verdict", None)
@@ -170,7 +559,7 @@ chosen = None
 for col, (title, desc, fn, kind) in zip(st.columns(4), scenarios):
     with col:
         html(f'<div class="gs-card gs-scenario"><b>{title}</b><p>{desc}</p></div>')
-        if st.button("Run", key=title, type=kind, width="stretch"):
+        if st.button("Run", key=title, type=kind, use_container_width=True):
             chosen = (title, fn)
 if chosen:
     title, fn = chosen
@@ -252,7 +641,7 @@ if v and v.verdict != "ALLOW":
                    'picks it up, explores the graph with its own read-only Cypher, can flag accounts, and files '
                    'an <code>:Investigation</code> report the Gatekeeper reads on the next release. '
                    'This usually takes 1–2 minutes on a free model.</div>', unsafe_allow_html=True)
-        if b.button("🔎 Investigate this case", type="primary", width="stretch"):
+        if b.button("🔎 Investigate this case", type="primary", use_container_width=True):
             with st.status("🔎 The Investigator is reading the case file...", expanded=True) as status:
                 def on_step(s):
                     status.update(label=f"🔎 Investigating: {s.name.removeprefix('LLM: ')}")
@@ -301,7 +690,7 @@ with t_dec:
         df = pd.DataFrame(log, columns=["at", "verdict", "risk", "impact", "package", "version", "maintainer"])
         df["at"] = df["at"].map(lambda ms: datetime.fromtimestamp(ms / 1000).strftime("%H:%M:%S"))
         st.dataframe(df.style.map(colour_cells(VERDICT_COLOUR), subset=["verdict"]),
-                     width="stretch", hide_index=True,
+                     use_container_width=True, hide_index=True,
                      column_config={"risk": st.column_config.ProgressColumn("risk", min_value=0, max_value=100,
                                                                              format="%d")})
     else:
@@ -312,6 +701,6 @@ with t_inv:
         df = pd.DataFrame(log, columns=["at", "severity", "version", "headline", "flagged"])
         df["at"] = df["at"].map(lambda ms: datetime.fromtimestamp(ms / 1000).strftime("%H:%M:%S"))
         st.dataframe(df.style.map(colour_cells(SEVERITY_COLOUR), subset=["severity"]),
-                     width="stretch", hide_index=True)
+                     use_container_width=True)
     else:
         st.caption("No investigations yet.")
