@@ -1,0 +1,6 @@
+falkordb>=1.8.0
+streamlit>=1.40
+pandas>=2.0
+pyvis>=0.3.2
+openai>=1.40
+python-dotenv>=1.0
